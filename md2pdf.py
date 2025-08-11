@@ -82,6 +82,7 @@ def md_to_pdf(md_path, pdf_path=None):
     subprocess.run(marp_cmd + additional_args, check=True)
 
 # run PPT
+changed = False
 powerpoint = win32com.client.Dispatch("PowerPoint.Application")
 for file in iter_md_paths('docs'):
     # check metadata
@@ -90,24 +91,35 @@ for file in iter_md_paths('docs'):
     marp = metadata.get('marp', ['none'])[0].upper()
     slide_level = metadata.get('slide_level', ['2'])[0]
 
+    # paths
     if marp != 'NONE' != pandoc:
         print(f"Processing: {file}")
     ppt_path = replace_ext(file, "pptx")
     pdf1_path = replace_ext(file, "1.pdf")
     pdf2_path = replace_ext(file, "2.pdf")
+
     # md to pdf
-    if marp == 'TRUE' and is_newer(file, pdf1_path):
-        print("  - Processing md to pdf")
-        md_to_pdf(file,pdf1_path)
+    if marp == 'TRUE':
+        if is_newer(file, pdf1_path):
+            changed = True
+            print("  - Processing md to pdf")
+            md_to_pdf(file,pdf1_path)
 
     if pandoc != 'TRUE': continue
     # md to ppt
     if is_newer(file, ppt_path):
+        changed = True
         print("  - Processing md to ppt")
         md_to_ppt(file, ppt_path, slide_level=slide_level)
 
     # ppt to pdf
-    if not is_newer(ppt_path, pdf2_path): continue
-    print("  - Processing ppt to pdf")
-    ppt_to_pdf(ppt_path, pdf2_path)
+    if is_newer(file, pdf2_path):
+        changed = True
+        print("  - Processing ppt to pdf")
+        ppt_to_pdf(ppt_path, pdf2_path)
 powerpoint.Quit()
+
+if changed:
+    print("md2pdf.py completed successfully")
+    print("exit with code 1 for cancel commit")
+    exit(1)
